@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Org Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#fbf7f3;
+      --panel:#ffffff;
+      --text:#1e1b16;
+      --muted:#6B6560;
+      --border:#E0DAD3;
+      --accent:#C86A4A;
+      --accent2:#E3B193;
+      --shadow: 0 10px 30px rgba(30,27,22,.06);
+      --radius:16px;
+      --green:#16a34a;
+      --red:#ef4444;
+      --blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:#14110f;color:#fff;padding:18px 14px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px 10px 18px}
+    .brand img{height:28px;width:auto;display:block}
+    .brand .name{font-weight:700;letter-spacing:.2px}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav a{padding:12px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;color:#f1f1f1}
+    .nav a:hover{background:rgba(255,255,255,.08)}
+    .nav a.active{background:rgba(200,106,74,.22);border:1px solid rgba(200,106,74,.35)}
+    .content{flex:1;padding:28px 28px 60px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .header h1{margin:0;font-size:34px;letter-spacing:-.4px}
+    .sub{color:var(--muted);margin:6px 0 0}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card.pad{padding:18px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .col-12{grid-column:span 12}
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    .col-3{grid-column:span 3}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:600}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.ghost{background:transparent;border-color:rgba(255,255,255,.18);color:#fff}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;border:1px solid var(--border);padding:6px 10px;color:var(--muted);font-size:13px;background:#fff}
+    .pill.green{border-color:rgba(22,163,74,.35);color:var(--green)}
+    .pill.red{border-color:rgba(239,68,68,.35);color:var(--red)}
+    .pill.blue{border-color:rgba(37,99,235,.35);color:var(--blue)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:700;color:var(--muted)}
+    .tab.active{border-color:rgba(200,106,74,.55);color:var(--text);box-shadow:0 10px 20px rgba(200,106,74,.10)}
+    input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;font-size:14px}
+    textarea{min-height:110px;resize:vertical}
+    .row{display:flex;gap:10px;align-items:center}
+    .row > *{flex:1}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{padding:14px;border:1px solid var(--border);border-radius:14px;background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .item .meta{color:var(--muted);font-size:13px;margin-top:4px}
+    .k{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .toast{position:fixed;right:18px;bottom:18px;background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(10px);transition:.2s}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .search{display:flex;gap:10px;align-items:center}
+    .search input{max-width:380px}
+    @media (max-width: 980px){
+      .sidebar{display:none}
+      .content{padding:20px}
+      .col-6,.col-4,.col-3{grid-column:span 12}
+      .header h1{font-size:28px}
+    }
+  </style>
+  
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brandLogo" alt="Logo" style="display:none">
+      <div class="name" id="brandName">SOP Portal</div>
+    </div>
+    <div class="nav">
+      <a id="navCompany" href="company-overview.html">Company Overview</a>
+      <a class="active" href="org-chart.html">Org Chart</a>
+      <a href="departments.html">Departments</a>
+      <a id="navAdmin" href="admin.html">Admin</a>
+      <a href="#" id="navLogout">Sign out</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="header">
+      <div>
+        <h1>Org Chart</h1>
+        <div class="sub">Roles and assigned people.</div>
+      </div>
+      <div class="search">
+        <span class="pill" id="userPill">Loading...</span>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="row" style="margin-bottom:12px">
+        <input id="search" placeholder="Search person or role name">
+        <button class="btn" id="btnClear">Clear</button>
+      </div>
+      <div id="chart"></div>
+      <div class="sub" id="emptyMsg" style="display:none;margin-top:12px">No roles yet. Add roles in Admin.</div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function qs(key) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(key);
+}
+function setQs(key, val) {
+  const url = new URL(window.location.href);
+  if (val === null || val === undefined) url.searchParams.delete(key);
+  else url.searchParams.set(key, val);
+  window.history.replaceState({}, '', url.toString());
+}
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.background = ok ? '#0f172a' : '#7f1d1d';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+async function requireSession(redirectTo='login.html') {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    window.location.href = redirectTo;
+    return null;
+  }
+  return session;
+}
+function isAdmin_(me) {
+  const r = (me && me.role ? me.role : '').toUpperCase();
+  return r === 'CEO' || r === 'COO';
+}
+function applyNavVisibility_(me) {
+  const admin = isAdmin_(me);
+  const adminLink = document.getElementById('navAdmin');
+  if (adminLink) adminLink.style.display = admin ? '' : 'none';
+  const companyLink = document.getElementById('navCompany');
+  if (companyLink) companyLink.style.display = admin ? '' : 'none';
+}
+
+async function getCurrentUserRow() {
+  const { data: userData } = await sb.auth.getUser();
+  const user = userData && userData.user ? userData.user : null;
+  const email = user && user.email ? user.email.toLowerCase() : '';
+  if (!email) return { email: '', role: 'Staff' };
+
+  const { data, error } = await sb.from('users').select('*').eq('email', email).maybeSingle();
+  if (error) console.warn('users lookup failed', error);
+
+  const me = data || { email, name: email.split('@')[0], role: 'Staff' };
+  try { applyNavVisibility_(me); } catch (e) {}
+  return me;
+}
+async function loadBranding() {
+  // settings: key='branding' value={ logo_path, company_name }
+  const { data } = await sb.from('settings').select('*').eq('key','branding').maybeSingle();
+  const v = (data && data.value) ? data.value : {};
+  const logo = document.getElementById('brandLogo');
+  const name = document.getElementById('brandName');
+  if (name && v.company_name) name.textContent = v.company_name;
+  if (logo) {
+    if (v.logo_path) {
+      const { data: urlData } = sb.storage.from('branding').getPublicUrl(v.logo_path);
+      logo.src = urlData.publicUrl;
+      logo.style.display = 'block';
+    } else {
+      logo.style.display = 'none';
+    }
+  }
+}
+async function canEditRole(email, roleName) {
+  // CEO/COO can edit anything by default
+  const me = await getCurrentUserRow();
+  if (!me) return false;
+  if ((me.role || '').toUpperCase() === 'CEO' || (me.role || '').toUpperCase() === 'COO') return true;
+  const { data } = await sb.from('role_permissions').select('*')
+    .eq('user_email', email).eq('role', roleName).maybeSingle();
+  return !!(data && data.can_edit);
+}
+async function canApproveRole(email, roleName) {
+  const me = await getCurrentUserRow();
+  if (!me) return false;
+  if ((me.role || '').toUpperCase() === 'CEO' || (me.role || '').toUpperCase() === 'COO') return true;
+  const { data } = await sb.from('role_permissions').select('*')
+    .eq('user_email', email).eq('role', roleName).maybeSingle();
+  return !!(data && data.can_approve);
+}
+function slugify(s) {
+  return (s || '')
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g,'')
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-');
+}
+
+let roles = [];
+let people = [];
+let assigns = [];
+let nodesById = new Map();
+let childrenByParent = new Map();
+
+function escapeHtml(s) {
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function buildIndex() {
+  nodesById = new Map(roles.map(r=>[r.id, r]));
+  childrenByParent = new Map();
+  roles.forEach(r=>{
+    const pid = r.parent_role_id || null;
+    if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+    childrenByParent.get(pid).push(r);
+  });
+  for (const [k, arr] of childrenByParent.entries()) {
+    arr.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  }
+}
+
+function getPeopleForRole(roleId) {
+  const personIds = assigns.filter(a=>a.role_id===roleId).map(a=>a.person_id);
+  return people.filter(p=>personIds.includes(p.id));
+}
+
+function nodeMatchesSearch(role, q) {
+  if (!q) return true;
+  const p = getPeopleForRole(role.id);
+  const hay = (role.name||'') + ' ' + p.map(x=>`${x.name||''} ${x.title||''}`).join(' ');
+  return hay.toLowerCase().includes(q);
+}
+
+function renderTree(parentId, depth, q) {
+  const kids = childrenByParent.get(parentId) || [];
+  const ul = document.createElement('div');
+  ul.style.marginLeft = depth ? (depth*18 + 'px') : '0';
+  ul.style.borderLeft = depth ? '2px solid var(--border)' : 'none';
+  ul.style.paddingLeft = depth ? '12px' : '0';
+  ul.style.display = 'flex';
+  ul.style.flexDirection = 'column';
+  ul.style.gap = '10px';
+
+  kids.forEach(r=>{
+    if (!nodeMatchesSearch(r, q)) {
+      // still render if any descendant matches
+      const anyDesc = hasDescendantMatch(r.id, q);
+      if (!anyDesc) return;
+    }
+
+    const peopleHere = getPeopleForRole(r.id);
+    const box = document.createElement('div');
+    box.className = 'item';
+    box.innerHTML = `
+      <div style="flex:1">
+        <div style="font-weight:900">${escapeHtml(r.name)}</div>
+        <div class="meta">
+          ${peopleHere.length ? peopleHere.map(p=>escapeHtml(p.name) + (p.title ? (' - ' + escapeHtml(p.title)) : '')).join('<br>') : 'No one assigned'}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn" href="role.html?role_id=${encodeURIComponent(r.id)}">Role hub</a>
+      </div>
+    `;
+    ul.appendChild(box);
+
+    const childWrap = renderTree(r.id, depth+1, q);
+    if (childWrap && childWrap.childNodes.length) ul.appendChild(childWrap);
+  });
+
+  return ul;
+}
+
+function hasDescendantMatch(roleId, q) {
+  const kids = childrenByParent.get(roleId) || [];
+  for (const k of kids) {
+    if (nodeMatchesSearch(k, q)) return true;
+    if (hasDescendantMatch(k.id, q)) return true;
+  }
+  return false;
+}
+
+function rerender() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const root = document.getElementById('chart');
+  root.innerHTML = '';
+  const tree = renderTree(null, 0, q);
+  root.appendChild(tree);
+}
+
+(async ()=>{
+  await requireSession();
+  await loadBranding();
+  const me = await getCurrentUserRow();
+  document.getElementById('userPill').textContent = (me.name || me.email) + ' - ' + (me.role || 'Staff');
+
+  const r = await sb.from('roles').select('*').eq('is_active', true).order('sort_order', { ascending:true });
+  roles = r.data || [];
+  if (!roles.length) document.getElementById('emptyMsg').style.display='block';
+
+  const p = await sb.from('people').select('*').order('name', { ascending:true });
+  people = p.data || [];
+
+  const a = await sb.from('people_roles').select('*');
+  assigns = a.data || [];
+
+  buildIndex();
+  rerender();
+
+  document.getElementById('search').addEventListener('input', rerender);
+  document.getElementById('btnClear').addEventListener('click', ()=>{
+    document.getElementById('search').value='';
+    rerender();
+  });
+})();
+
+document.getElementById('navLogout').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOP Page</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#fbf7f3;
+      --panel:#ffffff;
+      --text:#1e1b16;
+      --muted:#6B6560;
+      --border:#E0DAD3;
+      --accent:#C86A4A;
+      --accent2:#E3B193;
+      --shadow: 0 10px 30px rgba(30,27,22,.06);
+      --radius:16px;
+      --green:#16a34a;
+      --red:#ef4444;
+      --blue:#2563eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    a{color:inherit;text-decoration:none}
+    .app{display:flex;min-height:100vh}
+    .sidebar{width:280px;background:#14110f;color:#fff;padding:18px 14px;position:sticky;top:0;height:100vh}
+    .brand{display:flex;align-items:center;gap:10px;padding:10px 10px 18px}
+    .brand img{height:28px;width:auto;display:block}
+    .brand .name{font-weight:700;letter-spacing:.2px}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav a{padding:12px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;color:#f1f1f1}
+    .nav a:hover{background:rgba(255,255,255,.08)}
+    .nav a.active{background:rgba(200,106,74,.22);border:1px solid rgba(200,106,74,.35)}
+    .content{flex:1;padding:28px 28px 60px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .header h1{margin:0;font-size:34px;letter-spacing:-.4px}
+    .sub{color:var(--muted);margin:6px 0 0}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card.pad{padding:18px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .col-12{grid-column:span 12}
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    .col-3{grid-column:span 3}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:600}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.ghost{background:transparent;border-color:rgba(255,255,255,.18);color:#fff}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;border:1px solid var(--border);padding:6px 10px;color:var(--muted);font-size:13px;background:#fff}
+    .pill.green{border-color:rgba(22,163,74,.35);color:var(--green)}
+    .pill.red{border-color:rgba(239,68,68,.35);color:var(--red)}
+    .pill.blue{border-color:rgba(37,99,235,.35);color:var(--blue)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:700;color:var(--muted)}
+    .tab.active{border-color:rgba(200,106,74,.55);color:var(--text);box-shadow:0 10px 20px rgba(200,106,74,.10)}
+    input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;font-size:14px}
+    textarea{min-height:110px;resize:vertical}
+    .row{display:flex;gap:10px;align-items:center}
+    .row > *{flex:1}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{padding:14px;border:1px solid var(--border);border-radius:14px;background:#fff;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .item .meta{color:var(--muted);font-size:13px;margin-top:4px}
+    .k{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .toast{position:fixed;right:18px;bottom:18px;background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;opacity:0;transform:translateY(10px);transition:.2s}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .search{display:flex;gap:10px;align-items:center}
+    .search input{max-width:380px}
+    @media (max-width: 980px){
+      .sidebar{display:none}
+      .content{padding:20px}
+      .col-6,.col-4,.col-3{grid-column:span 12}
+      .header h1{font-size:28px}
+    }
+  </style>
+  
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brandLogo" alt="Logo" style="display:none">
+      <div class="name" id="brandName">SOP Portal</div>
+    </div>
+    <div class="nav">
+      <a id="navCompany" href="company-overview.html">Company Overview</a>
+      <a href="org-chart.html">Org Chart</a>
+      <a href="departments.html">Departments</a>
+      <a id="navAdmin" href="admin.html">Admin</a>
+      <a href="#" id="navLogout">Sign out</a>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="header">
+      <div>
+        <h1 id="pageTitle">SOP</h1>
+        <div class="sub" id="pageMeta"></div>
+      </div>
+      <div class="search" style="flex-wrap:wrap;justify-content:flex-end">
+        <a class="btn" id="btnBack" href="departments.html">Back</a>
+        <span class="pill" id="statusPill">Loading...</span>
+        <span class="pill" id="userPill">Loading...</span>
+      </div>
+    </div>
+
+    <div class="card pad" id="actions" style="margin-bottom:14px;display:none"></div>
+
+    <div class="grid">
+      <div class="col-12 card pad">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <div style="font-weight:900;font-size:18px">Content</div>
+            <div class="sub">Titles and content blocks.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <select id="versionSelect" style="max-width:280px"></select>
+          </div>
+        </div>
+
+        <div id="blocks" style="margin-top:12px" class="list"></div>
+
+        <div id="addBlockWrap" style="margin-top:10px;display:none">
+          <button class="btn" id="btnAddBlock">Add Block</button>
+        </div>
+      </div>
+
+      <div class="col-12 card pad">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <div style="font-weight:900;font-size:18px">Attachments</div>
+            <div class="sub">Links or uploaded files.</div>
+          </div>
+          <div id="attachActions" style="display:none;gap:10px;align-items:center">
+            <button class="btn" id="btnAddLink">Add Link</button>
+            <label class="btn" for="fileUpload">Upload File</label>
+            <input id="fileUpload" type="file" style="display:none">
+          </div>
+        </div>
+        <div class="list" id="attachments" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function qs(key) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(key);
+}
+function setQs(key, val) {
+  const url = new URL(window.location.href);
+  if (val === null || val === undefined) url.searchParams.delete(key);
+  else url.searchParams.set(key, val);
+  window.history.replaceState({}, '', url.toString());
+}
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.background = ok ? '#0f172a' : '#7f1d1d';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+async function requireSession(redirectTo='login.html') {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    window.location.href = redirectTo;
+    return null;
+  }
+  return session;
+}
+function isAdmin_(me) {
+  const r = (me && me.role ? me.role : '').toUpperCase();
+  return r === 'CEO' || r === 'COO';
+}
+function applyNavVisibility_(me) {
+  const admin = isAdmin_(me);
+  const adminLink = document.getElementById('navAdmin');
+  if (adminLink) adminLink.style.display = admin ? '' : 'none';
+  const companyLink = document.getElementById('navCompany');
+  if (companyLink) companyLink.style.display = admin ? '' : 'none';
+}
+
+async function getCurrentUserRow() {
+  const { data: userData } = await sb.auth.getUser();
+  const user = userData && userData.user ? userData.user : null;
+  const email = user && user.email ? user.email.toLowerCase() : '';
+  if (!email) return { email: '', role: 'Staff' };
+
+  const { data, error } = await sb.from('users').select('*').eq('email', email).maybeSingle();
+  if (error) console.warn('users lookup failed', error);
+
+  const me = data || { email, name: email.split('@')[0], role: 'Staff' };
+  try { applyNavVisibility_(me); } catch (e) {}
+  return me;
+}
+async function loadBranding() {
+  // settings: key='branding' value={ logo_path, company_name }
+  const { data } = await sb.from('settings').select('*').eq('key','branding').maybeSingle();
+  const v = (data && data.value) ? data.value : {};
+  const logo = document.getElementById('brandLogo');
+  const name = document.getElementById('brandName');
+  if (name && v.company_name) name.textContent = v.company_name;
+  if (logo) {
+    if (v.logo_path) {
+      const { data: urlData } = sb.storage.from('branding').getPublicUrl(v.logo_path);
+      logo.src = urlData.publicUrl;
+      logo.style.display = 'block';
+    } else {
+      logo.style.display = 'none';
+    }
+  }
+}
+async function canEditRole(email, roleName) {
+  // CEO/COO can edit anything by default
+  const me = await getCurrentUserRow();
+  if (!me) return false;
+  if ((me.role || '').toUpperCase() === 'CEO' || (me.role || '').toUpperCase() === 'COO') return true;
+  const { data } = await sb.from('role_permissions').select('*')
+    .eq('user_email', email).eq('role', roleName).maybeSingle();
+  return !!(data && data.can_edit);
+}
+async function canApproveRole(email, roleName) {
+  const me = await getCurrentUserRow();
+  if (!me) return false;
+  if ((me.role || '').toUpperCase() === 'CEO' || (me.role || '').toUpperCase() === 'COO') return true;
+  const { data } = await sb.from('role_permissions').select('*')
+    .eq('user_email', email).eq('role', roleName).maybeSingle();
+  return !!(data && data.can_approve);
+}
+function slugify(s) {
+  return (s || '')
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g,'')
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-');
+}
+
+let me = null;
+let page = null;
+let roleRow = null;
+let editable = false;
+let approvable = false;
+let currentVersion = null;
+
+function escapeHtml(s) {
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+function statusLabel(st) { return (st || 'draft').replace('_',' '); }
+function statusPillClass(st) {
+  if (st==='published') return 'green';
+  if (st==='in_review') return 'blue';
+  return '';
+}
+
+function renderStatus() {
+  const st = page.status || 'draft';
+  const pill = document.getElementById('statusPill');
+  pill.className = 'pill ' + statusPillClass(st);
+  pill.textContent = statusLabel(st);
+}
+
+function renderActions() {
+  const wrap = document.getElementById('actions');
+  wrap.style.display = 'block';
+  const st = page.status || 'draft';
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:900;font-size:18px">Actions</div>
+        <div class="sub">Draft, review, approval, and acknowledgements.</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  `;
+
+  if (editable) {
+    html += `<button class="btn" id="btnSaveDraft">Save Draft</button>`;
+    if (st !== 'published') html += `<button class="btn primary" id="btnSubmit">Submit for Review</button>`;
+    if (st === 'published') html += `<span class="pill green">Published</span>`;
+  }
+
+  if (approvable && st === 'in_review') {
+    html += `<button class="btn primary" id="btnApprove">Approve and Publish</button>`;
+    html += `<button class="btn" id="btnReject">Reject</button>`;
+  }
+
+  html += `</div></div>`;
+
+  // Ack
+  if (page.status === 'published' && page.requires_ack) {
+    html += `<div style="margin-top:12px" id="ackWrap"></div>`;
+  }
+
+  wrap.innerHTML = html;
+
+  if (editable) {
+    document.getElementById('btnSaveDraft')?.addEventListener('click', saveDraft);
+    document.getElementById('btnSubmit')?.addEventListener('click', submitForReview);
+  }
+  if (approvable) {
+    document.getElementById('btnApprove')?.addEventListener('click', approvePublish);
+    document.getElementById('btnReject')?.addEventListener('click', rejectReview);
+  }
+}
+
+function renderBlocks() {
+  const list = document.getElementById('blocks');
+  list.innerHTML = '';
+  const content = page.content || {};
+  const blocks = Array.isArray(content.blocks) ? content.blocks : [];
+
+  if (!blocks.length && !editable) {
+    list.innerHTML = '<div class="sub">No content yet.</div>';
+    return;
+  }
+
+  blocks.forEach((b, i)=>{
+    const heading = b.heading || '';
+    const body = b.body || '';
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <div style="flex:1">
+        ${editable ? `
+          <div class="k">Block title</div>
+          <input class="blkHeading" data-i="${i}" value="${escapeAttr(heading)}" placeholder="Title">
+          <div class="k" style="margin-top:10px">Content</div>
+          <textarea class="blkBody" data-i="${i}" placeholder="Write the steps or notes...">${escapeHtml(body)}</textarea>
+        ` : `
+          <div style="font-weight:900">${escapeHtml(heading || 'Untitled')}</div>
+          <div style="white-space:pre-wrap;line-height:1.7;margin-top:6px">${escapeHtml(body || '')}</div>
+        `}
+      </div>
+      ${editable ? `<button class="btn" data-del="${i}">Remove</button>` : ''}
+    `;
+    list.appendChild(el);
+  });
+
+  if (editable) {
+    list.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.getAttribute('data-del'),10);
+        const blocks2 = (page.content && Array.isArray(page.content.blocks)) ? page.content.blocks : [];
+        page.content.blocks = blocks2.filter((_,idx)=>idx!==i);
+        renderBlocks();
+      });
+    });
+    document.getElementById('addBlockWrap').style.display = 'block';
+  }
+}
+
+function readBlocksFromUI() {
+  const headings = [...document.querySelectorAll('.blkHeading')];
+  const bodies = [...document.querySelectorAll('.blkBody')];
+  const out = headings.map((h, idx)=>({ heading: h.value.trim(), body: (bodies[idx]?.value||'').trim() }))
+    .filter(x=>x.heading || x.body);
+  page.content = page.content || {};
+  page.content.blocks = out;
+}
+
+async function saveDraft() {
+  if (!editable) return;
+  readBlocksFromUI();
+  const payload = {
+    id: page.id,
+    content: page.content,
+    updated_at: new Date().toISOString(),
+    updated_by: me.email,
+    status: (page.status === 'published' ? 'draft' : page.status) || 'draft'
+  };
+  const { error } = await sb.from('sop_pages').update(payload).eq('id', page.id);
+  if (error) { console.error(error); return toast('Save failed', false); }
+  page.status = payload.status;
+  page.updated_at = payload.updated_at;
+  renderStatus();
+  renderActions();
+  toast('Draft saved');
+}
+
+async function submitForReview() {
+  if (!editable) return;
+  await saveDraft();
+  const { error } = await sb.from('sop_pages').update({ status:'in_review' }).eq('id', page.id);
+  if (error) { console.error(error); return toast('Submit failed', false); }
+  page.status = 'in_review';
+  await sb.from('sop_review_requests').insert({
+    page_id: page.id,
+    requested_by: me.email,
+    state: 'pending',
+    created_at: new Date().toISOString()
+  });
+  renderStatus();
+  renderActions();
+  toast('Submitted for review');
+}
+
+async function getNextVersionNumber() {
+  const { data } = await sb.from('sop_page_versions').select('version_number').eq('page_id', page.id).order('version_number', { ascending:false }).limit(1);
+  const last = (data && data.length) ? data[0].version_number : 0;
+  return (last || 0) + 1;
+}
+
+async function approvePublish() {
+  if (!approvable) return;
+  // save current blocks
+  if (editable) readBlocksFromUI();
+  const vnum = await getNextVersionNumber();
+
+  // insert version snapshot
+  const { error: vErr } = await sb.from('sop_page_versions').insert({
+    page_id: page.id,
+    version_number: vnum,
+    content: page.content,
+    created_at: new Date().toISOString(),
+    created_by: me.email
+  });
+  if (vErr) { console.error(vErr); return toast('Version save failed', false); }
+
+  // mark as published
+  const { error } = await sb.from('sop_pages').update({
+    status: 'published',
+    published_version: vnum,
+    updated_at: new Date().toISOString(),
+    updated_by: me.email
+  }).eq('id', page.id);
+  if (error) { console.error(error); return toast('Publish failed', false); }
+
+  // mark request approved
+  await sb.from('sop_review_requests').update({
+    state:'approved',
+    reviewed_by: me.email,
+    reviewed_at: new Date().toISOString()
+  }).eq('page_id', page.id).eq('state','pending');
+
+  page.status = 'published';
+  page.published_version = vnum;
+  renderStatus();
+  renderActions();
+  await loadVersions();
+  toast('Published');
+}
+
+async function rejectReview() {
+  if (!approvable) return;
+  const note = prompt('Reason (optional)');
+  await sb.from('sop_review_requests').update({
+    state:'rejected',
+    reviewed_by: me.email,
+    reviewed_at: new Date().toISOString(),
+    note: note || null
+  }).eq('page_id', page.id).eq('state','pending');
+  await sb.from('sop_pages').update({ status:'draft' }).eq('id', page.id);
+  page.status='draft';
+  renderStatus();
+  renderActions();
+  toast('Rejected');
+}
+
+async function loadVersions() {
+  const sel = document.getElementById('versionSelect');
+  sel.innerHTML = '';
+  const { data } = await sb.from('sop_page_versions').select('*').eq('page_id', page.id).order('version_number', { ascending:false }).limit(50);
+  const versions = data || [];
+  const optLive = document.createElement('option');
+  optLive.value = 'live';
+  optLive.textContent = 'Live (current)';
+  sel.appendChild(optLive);
+
+  versions.forEach(v=>{
+    const o = document.createElement('option');
+    o.value = String(v.version_number);
+    o.textContent = 'Version ' + v.version_number + ' - ' + new Date(v.created_at).toLocaleDateString();
+    sel.appendChild(o);
+  });
+
+  sel.value = 'live';
+  sel.addEventListener('change', async ()=>{
+    const val = sel.value;
+    if (val === 'live') {
+      await reloadPage();
+      return;
+    }
+    const num = parseInt(val,10);
+    const v = versions.find(x=>x.version_number===num);
+    if (!v) return;
+    currentVersion = v;
+    // view-only for old versions
+    const originalEditable = editable;
+    editable = false;
+    page.content = v.content || {};
+    renderBlocks();
+    renderActions();
+    renderStatus();
+    editable = originalEditable;
+    toast('Viewing version ' + num);
+  });
+}
+
+async function renderAck() {
+  if (!(page.status==='published' && page.requires_ack)) return;
+  const wrap = document.getElementById('ackWrap');
+  if (!wrap) return;
+
+  const v = page.published_version || 0;
+  const { data } = await sb.from('sop_acknowledgements')
+    .select('*').eq('page_id', page.id).eq('user_email', me.email).eq('version_number', v).maybeSingle();
+
+  if (data) {
+    wrap.innerHTML = `<span class="pill green">Acknowledged on ${new Date(data.created_at).toLocaleDateString()}</span>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="sub">This SOP requires acknowledgement.</div>
+      <button class="btn primary" id="btnAck">Acknowledge</button>
+    </div>
+  `;
+  document.getElementById('btnAck').addEventListener('click', async ()=>{
+    const { error } = await sb.from('sop_acknowledgements').insert({
+      page_id: page.id,
+      user_email: me.email,
+      version_number: v,
+      created_at: new Date().toISOString()
+    });
+    if (error) { console.error(error); return toast('Ack failed', false); }
+    toast('Acknowledged');
+    renderAck();
+  });
+}
+
+function renderAttachments() {
+  const list = document.getElementById('attachments');
+  list.innerHTML = '';
+  const content = page.content || {};
+  const atts = Array.isArray(content.attachments) ? content.attachments : [];
+
+  if (!atts.length) {
+    list.innerHTML = '<div class="sub">No attachments yet.</div>';
+    return;
+  }
+
+  atts.forEach((a, i)=>{
+    const kind = a.kind || 'link';
+    const name = a.name || a.url || 'Attachment';
+    const url = a.url || '#';
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <div>
+        <div style="font-weight:900">${escapeHtml(name)}</div>
+        <div class="meta">${escapeHtml(kind)}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a class="btn" href="${escapeAttr(url)}" target="_blank">Open</a>
+        ${editable ? `<button class="btn" data-del="${i}">Remove</button>` : ''}
+      </div>
+    `;
+    list.appendChild(el);
+  });
+
+  if (editable) {
+    list.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.getAttribute('data-del'),10);
+        const atts2 = (page.content && Array.isArray(page.content.attachments)) ? page.content.attachments : [];
+        page.content.attachments = atts2.filter((_,idx)=>idx!==i);
+        renderAttachments();
+      });
+    });
+  }
+}
+
+async function addLink() {
+  const name = prompt('Link name');
+  if (!name) return;
+  const url = prompt('URL');
+  if (!url) return;
+  page.content = page.content || {};
+  page.content.attachments = Array.isArray(page.content.attachments) ? page.content.attachments : [];
+  page.content.attachments.push({ kind:'link', name:name.trim(), url:url.trim() });
+  await saveDraft();
+  renderAttachments();
+}
+
+async function uploadFile(file) {
+  // storage bucket: sop-files
+  const path = page.slug + '/' + Date.now() + '-' + file.name;
+  const { error } = await sb.storage.from('sop-files').upload(path, file, { upsert:false });
+  if (error) { console.error(error); return toast('Upload failed', false); }
+  const { data: urlData } = sb.storage.from('sop-files').getPublicUrl(path);
+  page.content = page.content || {};
+  page.content.attachments = Array.isArray(page.content.attachments) ? page.content.attachments : [];
+  page.content.attachments.push({ kind:'file', name:file.name, url:urlData.publicUrl, path });
+  await saveDraft();
+  renderAttachments();
+  toast('Uploaded');
+}
+
+async function reloadPage() {
+  const slug = qs('slug');
+  const { data, error } = await sb.from('sop_pages').select('*').eq('slug', slug).maybeSingle();
+  if (error || !data) { console.error(error); toast('SOP not found', false); return; }
+  page = data;
+
+  const { data: r } = await sb.from('roles').select('*').eq('id', page.role_id).maybeSingle();
+  roleRow = r;
+
+  document.getElementById('pageTitle').textContent = page.title || 'SOP';
+  document.getElementById('pageMeta').textContent = roleRow ? (roleRow.name + ' - ' + (new Date(page.updated_at).toLocaleString())) : '';
+  renderStatus();
+
+  editable = await canEditRole(me.email, roleRow ? roleRow.name : '');
+  approvable = await canApproveRole(me.email, roleRow ? roleRow.name : '');
+
+  document.getElementById('attachActions').style.display = editable ? 'flex' : 'none';
+  document.getElementById('addBlockWrap').style.display = editable ? 'block' : 'none';
+
+  renderActions();
+  renderBlocks();
+  renderAttachments();
+  await loadVersions();
+  await renderAck();
+
+  if (roleRow) {
+    const { data: dept } = await sb.from('departments').select('*').eq('id', roleRow.department_id).maybeSingle();
+    if (dept) document.getElementById('btnBack').href = 'role.html?role_id=' + encodeURIComponent(roleRow.id) + '&tab=sops';
+  }
+}
+
+(async ()=>{
+  await requireSession();
+  await loadBranding();
+  me = await getCurrentUserRow();
+  document.getElementById('userPill').textContent = (me.name || me.email) + ' - ' + (me.role || 'Staff');
+
+  const slug = qs('slug');
+  if (!slug) { toast('Missing slug', false); return; }
+  await reloadPage();
+
+  document.getElementById('btnAddBlock').addEventListener('click', ()=>{
+    page.content = page.content || {};
+    page.content.blocks = Array.isArray(page.content.blocks) ? page.content.blocks : [];
+    page.content.blocks.push({ heading:'', body:'' });
+    renderBlocks();
+  });
+
+  document.getElementById('btnAddLink').addEventListener('click', addLink);
+
+  document.getElementById('fileUpload').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    await uploadFile(file);
+    e.target.value = '';
+  });
+})();
+
+document.getElementById('navLogout').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+});
+
+</script>
+</body>
+</html>
